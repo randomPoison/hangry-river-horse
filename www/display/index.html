@@ -6,6 +6,9 @@
         <script>
             let eventSource = new EventSource('events');
             console.log(eventSource);
+            eventSource.onmessage = function(event) {
+                console.log('event: ', event);
+            };
         </script>
     </head>
 

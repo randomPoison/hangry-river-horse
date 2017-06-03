@@ -1,4 +1,6 @@
 extern crate iron;
+#[macro_use]
+extern crate mime;
 extern crate mount;
 extern crate staticfile;
 
@@ -15,7 +17,12 @@ fn main() {
 
     // The `events/` endpoint should provide a stream of events to the display client.
     mount.mount("display/events/", |_request: &mut Request| {
-        Ok(Response::with((status::Ok, "Here's an event")))
+
+        Ok(Response::with((
+            mime!(Text/EventStream),
+            status::Ok,
+            "event: garbo\ndata: Here's an event\n\n",
+        )))
     });
 
     // Instantiate and run the server.
