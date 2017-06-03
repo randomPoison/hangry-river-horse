@@ -1,0 +1,7 @@
+[package]
+authors = ["David LeGare <excaliburhissheath@gmail.com>"]
+name = "hangry-hippos"
+version = "0.1.0"
+
+[dependencies]
+nickel = "0.9.0"
