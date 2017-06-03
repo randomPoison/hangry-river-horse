@@ -4,4 +4,6 @@ name = "hangry-hippos"
 version = "0.1.0"
 
 [dependencies]
-nickel = "0.9.0"
+iron = "0.5.1"
+mount = "0.3.0"
+staticfile = "0.4.0"

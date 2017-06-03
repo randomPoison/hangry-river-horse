@@ -1,28 +1,23 @@
-#[macro_use] extern crate nickel;
+extern crate iron;
+extern crate mount;
+extern crate staticfile;
 
-use nickel::*;
+use iron::prelude::*;
+use iron::status;
+use staticfile::Static;
+use mount::Mount;
 
 fn main() {
-    let mut server = Nickel::new();
+    let mut mount = Mount::new();
 
-    // TODO: This doesn't give quite the right behavior. You have to navigate to `/display/`,
-    // going to `/display` gives a client response.
-    server.mount("/display/", middleware! { |_request, response|
-        "Got display request"
+    // Going to the root address should display the client-facing site.
+    mount.mount("/", Static::new("www/"));
+
+    // The `events/` endpoint should provide a stream of events to the display client.
+    mount.mount("display/events/", |_request: &mut Request| {
+        Ok(Response::with((status::Ok, "Here's an event")))
     });
 
-    server.mount("/events/", middleware! { |_request, response|
-        "Here are some events"
-    });
-
-    server.mount("/", StaticFilesHandler::new("www/"));
-
-    server.utilize(logger_fn);
-
-    server.listen("127.0.0.1:6767").unwrap();
-}
-
-fn logger_fn<'mw>(req: &mut Request, res: Response<'mw>) -> MiddlewareResult<'mw> {
-    println!("logging request from logger fn: {:?}", req.origin.uri);
-    res.next_middleware()
+    // Instantiate and run the server.
+    Iron::new(mount).http("localhost:6767").unwrap();
 }
