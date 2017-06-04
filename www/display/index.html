@@ -4,9 +4,9 @@
         <meta charset="utf-8">
         <title>Hangry Hangry Hippos</title>
         <script>
-            let eventSource = new EventSource('events');
-            console.log(eventSource);
-            eventSource.onmessage = function(event) {
+            let socket = new WebSocket('ws://localhost:6767/api/display', 'echo');
+            console.log(socket);
+            socket.onmessage = function(event) {
                 console.log('event: ', event);
             };
         </script>

@@ -1,30 +1,47 @@
-extern crate iron;
 #[macro_use]
-extern crate mime;
-extern crate mount;
-extern crate staticfile;
+extern crate rouille;
 
-use iron::prelude::*;
-use iron::status;
-use staticfile::Static;
-use mount::Mount;
+use rouille::websocket;
+use std::thread;
 
 fn main() {
-    let mut mount = Mount::new();
+    println!("Now listening on localhost:6767");
 
-    // Going to the root address should display the client-facing site.
-    mount.mount("/", Static::new("www/"));
+    rouille::start_server("localhost:6767", move |request| {
+        router!(request,
+            (GET) (/api/display) => {
+                let (response, websocket) = try_or_400!(websocket::start(&request, Some("echo")));
 
-    // The `events/` endpoint should provide a stream of events to the display client.
-    mount.mount("display/events/", |_request: &mut Request| {
+                // Because of the nature of I/O in Rust, we need to spawn a separate thread for
+                // each websocket.
+                thread::spawn(move || {
+                    // This line will block until the `response` above has been returned.
+                    let mut websocket = websocket.recv().unwrap();
 
-        Ok(Response::with((
-            mime!(Text/EventStream),
-            status::Ok,
-            "event: garbo\ndata: Here's an event\n\n",
-        )))
+                    loop {
+                        // We wait for a new message to come from the websocket.
+                        let message = match websocket.next() {
+                            Some(m) => m,
+                            None => break,
+                        };
+
+                        match message {
+                            websocket::Message::Text(txt) => {
+                                // If the message is text, send it back with `send_text`.
+                                println!("received {:?} from a websocket", txt);
+                                websocket.send_text(&txt).unwrap();
+                            },
+                            websocket::Message::Binary(_) => {
+                                println!("received binary from a websocket");
+                            },
+                        }
+                    }
+                });
+
+                response
+            },
+
+            _ => rouille::match_assets(&request, "./www/")
+        )
     });
-
-    // Instantiate and run the server.
-    Iron::new(mount).http("localhost:6767").unwrap();
 }
