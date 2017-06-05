@@ -6,6 +6,16 @@ socket.onmessage = function(event) {
     console.log('socket event: ', event);
 };
 
+socket.onerror = function(error) {
+    console.error(error);
+};
+
+socket.onclose = function() {
+    console.log('Socket closed I guess');
+
+    // TODO: Re-open the connection, if possible.
+};
+
 // Callback for "Feed Me" button. Sends a message to the backend notifying that
 // a hippo has been fed.
 function feedMe() {
