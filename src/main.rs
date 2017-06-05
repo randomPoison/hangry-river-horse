@@ -34,7 +34,7 @@ fn main() {
     let (sender, receiver) = mpsc::channel::<()>();
 
     let maybe_receiver = Arc::new(Mutex::new(Some(receiver)));
-    let sender = Arc::new(sender);
+    let sender = Arc::new(Mutex::new(sender));
 
     rouille::start_server("localhost:6767", move |request| {
         router!(request,
@@ -58,6 +58,8 @@ fn main() {
                     // Each time we get a message from the receiver we push new data across the
                     // websocket.
                     for _ in receiver {
+                        println!("Recieving some state!");
+
                         // Serialize the current game state to JSON so we can send it to the host.
                         let state_json = {
                             // TODO: We don't need a lock on the mutex, an `RwLock` would allow the
@@ -78,7 +80,10 @@ fn main() {
 
                 // Create a handle to the game state for this connection.
                 let game_state = game_state.clone();
-                let sender = (&*sender).clone();
+                let sender = {
+                    let sender = sender.lock().unwrap();
+                    (&*sender).clone()
+                };
 
                 // Because of the nature of I/O in Rust, we need to spawn a separate thread for
                 // each websocket.
