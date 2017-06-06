@@ -7,7 +7,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use rouille::{Response, websocket};
+use rouille::{Request, Response, websocket};
 use std::collections::HashMap;
 use std::thread;
 use std::sync::*;
@@ -24,19 +24,22 @@ fn main() {
     // Create a channel that can be used to send API call messages from the handler threads to the
     // game thread. We put the sender in an `Arc<Mutex>` so that request handler threads can clone
     // the sender and use it to send the API to the game thread.
-    let (game_send, game_recv) = chan::async::<ApiMessage>();
+    let (api_send, api_recv) = chan::async::<ApiMessage>();
 
     // Create 2 busses: One for broadcasting updates to the clients, another for broadcasting
     // updates to hosts.
     let (client_send, client_recv) = multiqueue::broadcast_queue(128);
     let client_recv = Mutex::new(client_recv);
 
+    let (host_send, host_recv) = multiqueue::broadcast_queue(32);
+    let host_recv = Mutex::new(host_recv);
+
     // Spawn the game thread, giving it the receiever to use to receive inputs.
     thread::spawn(move || {
         let game_state = GameState {
             scores: HashMap::new(),
         };
-        for message in game_recv {
+        for message in api_recv {
             println!("Received a message from an API endpoint: {:?}", message);
 
             match message {
@@ -44,6 +47,8 @@ fn main() {
                     // TODO: Keep track of the players in some way.
                     println!("Registered player with id: {:?}", player_id);
                     client_send.try_send(ClientUpdate::PlayerRegistered(player_id))
+                        .expect("The host broadcast queue was full");
+                    host_send.try_send(HostUpdate::PlayerRegistered(player_id))
                         .expect("The host broadcast queue was full");
                 },
             }
@@ -55,32 +60,30 @@ fn main() {
         router!(request,
             (GET) (/api/register-player) => {
                 let player_id = CLIENT_COUNTER.fetch_add(1, Ordering::Relaxed);
-                game_send.send(ApiMessage::PlayerRegistered(player_id));
+                api_send.send(ApiMessage::PlayerRegistered(player_id));
 
                 // TODO: Send the player's ID back in the response payload.
                 Response::text(format!("{{\"id\": \"{}\"}}", player_id))
             },
 
             (GET) (/api/client-stream) => {
-                let (response, receive_websocket) =
-                    try_or_400!(websocket::start::<String>(&request, None));
-
-                let client_events = client_recv.lock()
+                let client_broadcast = client_recv
+                    .lock()
                     .expect("Unable to lock client receiver")
                     .clone();
 
-                thread::spawn(move || {
-                    let mut websocket = receive_websocket
-                        .recv()
-                        .expect("Unable to receive websocket");
-                    for event in client_events {
-                        let payload = serde_json::to_string(&event)
-                            .expect("Unable to serialzie to JSON");
-                        websocket.send_text(&*payload).expect("Error sending client event");
-                    }
-                });
+                start_broadcast_socket(request, client_broadcast)
+                    .expect("Unable to start client socket")
+            },
 
-                response
+            (GET) (/api/host-stream) => {
+                let host_broadcast = host_recv
+                    .lock()
+                    .expect("Unable to lock host receiver")
+                    .clone();
+
+                start_broadcast_socket(request, host_broadcast)
+                    .expect("Unable to start host socket")
             },
 
             // TODO: This redirects the broswer to `/client.html` and `/host.html`, but we don't
@@ -94,6 +97,41 @@ fn main() {
     });
 }
 
+/// Creates a websocket from `request` and pumps messages from `broadcast` through the socket.
+///
+/// Helper method for creating
+fn start_broadcast_socket<T>(
+    request: &Request,
+    broadcast: multiqueue::BroadcastReceiver<T>,
+) -> Result<Response, String>
+where
+    T: 'static + serde::Serialize + Clone + Send,
+{
+    let (response, receive_websocket) = websocket::start::<String>(&request, None)
+        .map_err("Unable to start websocket".into())?;
+
+    thread::spawn(move || {
+        // Actually grab the websocket.
+        let mut websocket = receive_websocket.recv().expect("Unable to receive from socket");
+
+        // Pump events into the websocket as they become available.
+        for event in broadcast {
+            // Stop receiving events if the client connection closed.
+            // TODO: Is there a better way to do this? The way this is setup, we won't
+            // detect that a websocket has closed until an event came out.
+            if websocket.is_closed() {
+                break;
+            }
+
+            // Serialize the event as JSON and send it through the socket.
+            let payload = serde_json::to_string(&event).expect("Unable to serialize event");
+            websocket.send_text(&*payload).expect("Unable to send JSON payload");
+        }
+    });
+
+    Ok(response)
+}
+
 #[derive(Debug, Clone)]
 enum ApiMessage {
     PlayerRegistered(usize),
@@ -104,19 +142,15 @@ struct GameState {
     scores: HashMap<usize, usize>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct ClientMessage {
-    event: String,
-    amount: usize,
-}
-
 #[derive(Debug, Clone, Serialize)]
 struct ClientConnectionMessage {
     id: usize,
 }
 
-#[derive(Debug, Clone)]
-struct HostUpdate;
+#[derive(Debug, Clone, Serialize)]
+enum HostUpdate {
+    PlayerRegistered(usize),
+}
 
 #[derive(Debug, Clone, Serialize)]
 enum ClientUpdate {

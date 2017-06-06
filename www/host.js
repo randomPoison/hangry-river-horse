@@ -5,7 +5,7 @@ let app = new Vue({
     }
 });
 
-let socket = new WebSocket('ws://localhost:6767/api/host');
+let socket = new WebSocket('ws://localhost:6767/api/host-stream');
 socket.onmessage = (event) => {
     console.log('payload: ', event);
 
