@@ -38,7 +38,11 @@ fn main() {
 
     rouille::start_server("localhost:6767", move |request| {
         router!(request,
-            (GET) (/api/host) => {
+            // Register a new player, sending back the player's ID.
+            (GET) (/api/player/register) => {
+                try_or_400!(register_player(request));
+            },
+            (GET) (/api/events) => {
                 let (response, websocket) = try_or_400!(websocket::start::<String>(&request, None));
 
                 // Grab the receiver handle.
@@ -75,7 +79,8 @@ fn main() {
                 response
             },
 
-            (GET) (/api/client) => {
+            // Endpoint for subscribing to update events.
+            (GET) (/api/events) => {
                 let (response, websocket) = try_or_400!(websocket::start::<String>(&request, None));
 
                 // Create a handle to the game state for this connection.
@@ -91,12 +96,6 @@ fn main() {
                     // This line will block until the `response` above has been returned.
                     let mut websocket = websocket.recv().unwrap();
 
-                    // Generate an ID for the client and send it back to the client.
-                    let client_id = CLIENT_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    let connection_message = ClientConnectionMessage {
-                        id: client_id,
-                    };
-                    websocket.send_text(&*serde_json::to_string(&connection_message).unwrap()).unwrap();
 
                     // Add a score for the client to the game state.
                     {
@@ -141,6 +140,14 @@ fn main() {
             _ => rouille::match_assets(&request, "./www/")
         )
     });
+}
+
+fn register_player(request: &Request) -> Result<ClientConnectionMessage, ???> {
+    // Generate an ID for the client and send it back to the client.
+    let client_id = CLIENT_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let connection_message = ClientConnectionMessage {
+        id: client_id,
+    };
 }
 
 #[derive(Debug, Serialize)]
