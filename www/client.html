@@ -9,10 +9,14 @@
     </head>
 
     <body>
-        <h1>Hangry Hangry Hippos Client</h1>
-        <p>These hippos are hangry, and the only thing they can satisfy them is colorful balls!</p>
-        <button onclick="feedMe()">Click to Feed Hippos!</button>
-        <div id="app">{{message}}</div>
+        <div id="app">
+            <h1>Hangry Hangry Hippos Client</h1>
+            <p>These hippos are hangry, and the only thing they can satisfy them is colorful balls!</p>
+            <div v-if="id">
+                Player has registered with ID {{ id }}.
+            </div>
+            <button onclick="feedMe()">Click to Feed Hippos!</button>
+        </div>
 
         <!-- Load script for the client. -->
         <script src="client.js"></script>

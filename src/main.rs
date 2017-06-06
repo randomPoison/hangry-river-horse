@@ -1,3 +1,5 @@
+extern crate chan;
+extern crate multiqueue;
 #[macro_use]
 extern crate rouille;
 extern crate serde;
@@ -5,7 +7,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use rouille::websocket;
+use rouille::{Response, websocket};
 use std::collections::HashMap;
 use std::thread;
 use std::sync::*;
@@ -19,135 +21,82 @@ use std::sync::atomic::*;
 static CLIENT_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
 
 fn main() {
+    // Create a channel that can be used to send API call messages from the handler threads to the
+    // game thread. We put the sender in an `Arc<Mutex>` so that request handler threads can clone
+    // the sender and use it to send the API to the game thread.
+    let (game_send, game_recv) = chan::async::<ApiMessage>();
+
+    // Create 2 busses: One for broadcasting updates to the clients, another for broadcasting
+    // updates to hosts.
+    let (client_send, client_recv) = multiqueue::broadcast_queue(128);
+    let client_recv = Mutex::new(client_recv);
+
+    // Spawn the game thread, giving it the receiever to use to receive inputs.
+    thread::spawn(move || {
+        let game_state = GameState {
+            scores: HashMap::new(),
+        };
+        for message in game_recv {
+            println!("Received a message from an API endpoint: {:?}", message);
+
+            match message {
+                ApiMessage::PlayerRegistered(player_id) => {
+                    // TODO: Keep track of the players in some way.
+                    println!("Registered player with id: {:?}", player_id);
+                    client_send.try_send(ClientUpdate::PlayerRegistered(player_id))
+                        .expect("The host broadcast queue was full");
+                },
+            }
+        }
+    });
+
     println!("Now listening on localhost:6767");
-
-    // Create the game state within an `Arc<Mutex>` so that it can be shared between threads.
-    // TODO: There should be a more concurrency-friendly way to model this, likely built around
-    // message passing. Using a mutex works, but forces unnecessary synchronization.
-    let game_state = Arc::new(Mutex::new(GameState {
-        scores: HashMap::new(),
-    }));
-
-    // Create a channel that allows client threads to notify the host thread that the game state
-    // has updated. No actually data is passed through the channel, it's just used to notify the
-    // host thread.
-    let (sender, receiver) = mpsc::channel::<()>();
-
-    let maybe_receiver = Arc::new(Mutex::new(Some(receiver)));
-    let sender = Arc::new(Mutex::new(sender));
-
     rouille::start_server("localhost:6767", move |request| {
         router!(request,
-            // Register a new player, sending back the player's ID.
-            (GET) (/api/player/register) => {
-                try_or_400!(register_player(request));
+            (GET) (/api/register-player) => {
+                let player_id = CLIENT_COUNTER.fetch_add(1, Ordering::Relaxed);
+                game_send.send(ApiMessage::PlayerRegistered(player_id));
+
+                // TODO: Send the player's ID back in the response payload.
+                Response::text(format!("{{\"id\": \"{}\"}}", player_id))
             },
-            (GET) (/api/events) => {
-                let (response, websocket) = try_or_400!(websocket::start::<String>(&request, None));
 
-                // Grab the receiver handle.
-                // TODO: Support having multiple hosts.
-                let mut receiver = maybe_receiver.lock().unwrap();
-                let receiver = (&mut *receiver).take().expect("Multiple hosts not supported");
+            (GET) (/api/client-stream) => {
+                let (response, receive_websocket) =
+                    try_or_400!(websocket::start::<String>(&request, None));
 
-                // Create a handle to the game state for this connection.
-                let game_state = game_state.clone();
+                let client_events = client_recv.lock()
+                    .expect("Unable to lock client receiver")
+                    .clone();
 
-                // Because of the nature of I/O in Rust, we need to spawn a separate thread for
-                // each websocket.
                 thread::spawn(move || {
-                    // This line will block until the `response` above has been returned.
-                    let mut websocket = websocket.recv().unwrap();
-
-                    // Each time we get a message from the receiver we push new data across the
-                    // websocket.
-                    for _ in receiver {
-                        println!("Recieving some state!");
-
-                        // Serialize the current game state to JSON so we can send it to the host.
-                        let state_json = {
-                            // TODO: We don't need a lock on the mutex, an `RwLock` would allow the
-                            // sender to read the game state without preventing concurrent reads.
-                            let game_state = game_state.lock().unwrap();
-                            serde_json::to_string(&*game_state).unwrap()
-                        };
-
-                        websocket.send_text(&*state_json).unwrap();
+                    let mut websocket = receive_websocket
+                        .recv()
+                        .expect("Unable to receive websocket");
+                    for event in client_events {
+                        let payload = serde_json::to_string(&event)
+                            .expect("Unable to serialzie to JSON");
+                        websocket.send_text(&*payload).expect("Error sending client event");
                     }
                 });
 
                 response
             },
 
-            // Endpoint for subscribing to update events.
-            (GET) (/api/events) => {
-                let (response, websocket) = try_or_400!(websocket::start::<String>(&request, None));
-
-                // Create a handle to the game state for this connection.
-                let game_state = game_state.clone();
-                let sender = {
-                    let sender = sender.lock().unwrap();
-                    (&*sender).clone()
-                };
-
-                // Because of the nature of I/O in Rust, we need to spawn a separate thread for
-                // each websocket.
-                thread::spawn(move || {
-                    // This line will block until the `response` above has been returned.
-                    let mut websocket = websocket.recv().unwrap();
-
-
-                    // Add a score for the client to the game state.
-                    {
-                        let mut game_state = game_state.lock().unwrap();
-                        game_state.scores.insert(client_id, 0);
-                    }
-
-                    for message in websocket {
-                        match message {
-                            websocket::Message::Text(payload) => {
-                                println!("Raw payload: {}", payload);
-
-                                // Try parsing the message as JSON, returning an error if the
-                                // payload didn't conform to the right format.
-                                let message = serde_json::from_str::<ClientMessage>(&*payload).unwrap();
-                                println!("message: {:?}", message);
-
-                                // Add to the client's current score.
-                                if message.event == "feed-me" {
-                                    let mut game_state = game_state.lock().unwrap();
-                                    {
-                                        let current_score = game_state.scores.get_mut(&client_id).unwrap();
-                                        *current_score += message.amount;
-                                    }
-
-                                    println!("Game state: {:?}", &*game_state);
-
-                                    sender.send(()).unwrap();
-                                }
-                            }
-
-                            _ => {
-                                panic!("The client API only supports JSON-encoded text messages");
-                            }
-                        }
-                    }
-                });
-
-                response
-            },
-
-            _ => rouille::match_assets(&request, "./www/")
+            // TODO: This redirects the broswer to `/client.html` and `/host.html`, but we don't
+            // want the browser to actually show those addresses. Instead, we should serve the file
+            // directly without redirecting, that way the URL bar of the browser doesn't show the
+            // the change.
+            (GET) (/) => { rouille::Response::redirect_303("/client.html") },
+            (GET) (/host) => { rouille::Response::redirect_303("/host.html") },
+            _ => { rouille::match_assets(&request, "./www/") }
         )
     });
 }
 
-fn register_player(request: &Request) -> Result<ClientConnectionMessage, ???> {
-    // Generate an ID for the client and send it back to the client.
-    let client_id = CLIENT_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let connection_message = ClientConnectionMessage {
-        id: client_id,
-    };
+#[derive(Debug, Clone)]
+enum ApiMessage {
+    PlayerRegistered(usize),
 }
 
 #[derive(Debug, Serialize)]
@@ -164,4 +113,12 @@ struct ClientMessage {
 #[derive(Debug, Clone, Serialize)]
 struct ClientConnectionMessage {
     id: usize,
+}
+
+#[derive(Debug, Clone)]
+struct HostUpdate;
+
+#[derive(Debug, Clone, Serialize)]
+enum ClientUpdate {
+    PlayerRegistered(usize),
 }

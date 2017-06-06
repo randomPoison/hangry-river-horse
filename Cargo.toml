@@ -4,6 +4,8 @@ name = "hangry-hippos"
 version = "0.1.0"
 
 [dependencies]
+chan = "0.1.19"
+multiqueue = "0.3.2"
 rouille = "1.0.1"
 serde = "1.0.8"
 serde_derive = "1.0.8"
