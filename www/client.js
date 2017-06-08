@@ -6,22 +6,22 @@ let app = new Vue({
     }
 });
 
-// // Initialize WebSocket connetion without waiting for the DOM to
-// // be ready. I don't know if that's actually a good idea, but
-// // whatevs.
-// let socket = new WebSocket('ws://localhost:6767/api/client-stream');
-// socket.onmessage = function(event) {
-//     console.log('socket event: ', event);
-// };
-//
-// socket.onerror = function(error) {
-//     console.error(error);
-// };
-//
-// socket.onclose = function() {
-//     // TODO: Re-open the connection, if possible.
-//     console.log('Socket closed I guess');
-// };
+// Initialize WebSocket connetion without waiting for the DOM to
+// be ready. I don't know if that's actually a good idea, but
+// whatevs.
+let socket = new WebSocket('ws://localhost:6768');
+socket.onmessage = function(event) {
+    console.log('socket event: ', event);
+};
+
+socket.onerror = function(error) {
+    console.error(error);
+};
+
+socket.onclose = function() {
+    // TODO: Re-open the connection, if possible.
+    console.log('Socket closed I guess');
+};
 
 // Register the player with the backend.
 let registrationRequest = new XMLHttpRequest();
