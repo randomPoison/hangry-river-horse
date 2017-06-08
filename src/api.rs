@@ -1,22 +1,60 @@
 use rocket_contrib::{JSON, Value};
 
+use rocket::State;
 use std::sync::atomic::*;
-use std::sync::mpsc;
+use std::sync::*;
 use std::thread;
 use ws;
 
+/// Uniquely identifies a connected player.
+///
+/// When a new player joins, they use the `/api/register-player` endpoint to register themselves.
+/// Registration generates a new `PlayerId`, which is stored inside the server and returned to the
+/// client. If the client disconnects and wants to rejoin, they can continue using the previous
+/// `PlayerId` to avoid losing the player's progress.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub struct PlayerId(usize);
+
+/// Generator for `PlayerId`.
+///
+/// Meant to be managed as application state by Rocket. Only one should ever be created, and Rocket
+/// ensures that only one can ever be registered as managed state.
+#[derive(Debug)]
+pub struct PlayerIdGenerator(AtomicUsize);
+
+impl PlayerIdGenerator {
+    /// Creates a new `PlayerIdGenerator`.
+    ///
+    /// Only one `PlayerIdGenerator` should be created in the lifetime of the application. A single
+    /// generator will never create duplicate IDs, but if there are multiple generators will
+    /// produce the same IDs.
+    pub fn new() -> PlayerIdGenerator {
+        PlayerIdGenerator(ATOMIC_USIZE_INIT)
+    }
+
+    /// Generate a unique ID for a player.
+    pub fn next_id(&self) -> PlayerId {
+        PlayerId(self.0.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct RegisterPlayerResponse {
-    id: usize,
+    id: PlayerId,
 }
 
 #[get("/register-player")]
-pub fn register_player() -> JSON<RegisterPlayerResponse> {
-    static PLAYER_ID_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
-
-    let next_id = PLAYER_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+pub fn register_player(player_id_generator: State<PlayerIdGenerator>, broadcast_sender: State<Mutex<mpsc::Sender<Broadcast>>>) -> JSON<RegisterPlayerResponse> {
+    let next_id = player_id_generator.next_id();
 
     // TODO: Update game state to reflect the registered player.
+
+    // Broadcast to all hosts that a new player has joined.
+    broadcast_sender
+        .lock()
+        .expect("Failed to acquire lock on broadcast sender")
+        .send(Broadcast::Host(HostBroadcast::PlayerRegistered(next_id)))
+        .expect("Failed to send player register broadcast");
 
     JSON(RegisterPlayerResponse {
         id: next_id,
@@ -30,7 +68,9 @@ pub enum Broadcast {
 }
 
 #[derive(Debug, Serialize)]
-pub struct HostBroadcast;
+pub enum HostBroadcast {
+    PlayerRegistered(PlayerId),
+}
 
 #[derive(Debug, Serialize)]
 pub struct PlayerBroadcast;
@@ -42,26 +82,66 @@ pub struct PlayerBroadcast;
 /// allows for API messages to be sent from any number of threads to the websocket server, at which
 /// point they will be broadcast to any connected clients.
 pub fn start_websocket_server() -> mpsc::Sender<Broadcast> {
+    use ws::*;
+
     // Create a sender/reciever pair so that the Rocket server can send messages to be broadcast
     // to all websocket listeners.
-    let (sender, receiver) = mpsc::channel();
+    let (broadcast_sender, broadcast_receiver) = mpsc::channel();
+    let (socket_sender, socket_receiver) = mpsc::channel();
 
     // Spawn a thread to host the websocket server. The websocket server must listen on a different
-    // port than the Rocket server, so we use 6768. The thread takes the receiver end of the
-    // channel so that it can pull messages out of the queue and broadcast them to any active
-    // hosts/clients.
-    thread::spawn(|| {
-        // let _ = receiver; // TODO: Actually use the receiver.
-        ws::listen("localhost:6768", |out| {
-            println!("Made a new websocket connection");
+    // port than the Rocket server, so we use 6768. As websocket connections are opened, the sender
+    // end of the connection is saved so that
+    thread::spawn(move || {
+        ws::listen("localhost:6768", |ws_sender| {
+            println!("Made a new websocket connection: {:?}", ws_sender.token());
 
-            // TODO: Listen for input from the receiver and pump that shit out to the websockets.
-            |message| {
-                println!("Recieved message from socket: {:?}", message);
-                Ok(())
-            }
-        }).expect("Websocket ");
+            // Send the websocket sender to the broadcast thread.
+            socket_sender.send(ws_sender);
+
+            // Create a noop handler for the connection. We don't care about listening for messages
+            // or doing any advanced handling (for now, at least), so we don't need the handler to
+            // to do anything.
+            |_| { Ok(()) }
+        });
     });
 
-    sender
+    // Spawn a thread to read broadcasts and multiplex them to the websockets.
+    thread::spawn(move || {
+        let mut sockets = Vec::new();
+
+        for broadcast in broadcast_receiver {
+            // Grab any pending sockets that have been sent.
+            for socket in socket_receiver.try_iter() {
+                sockets.push(socket);
+            }
+
+            // Serialize the broadcast as JSON.
+            let payload = ::serde_json::to_string(&broadcast).expect("Failed to serialize payload");
+
+            for socket in &sockets {
+                // TODO: If `send` returns an `Err`, then it means the socket closed (right?). We
+                // should remove closed sockets from `sockets`.
+                socket.send(payload.clone());
+            }
+
+            // TODO: Split messages between host broadcasts and player broadcasts.
+            // Broadcast the message out to all sockets.
+            // match broadcast {
+            //     Broadcast::Host(host_broadcast) => {
+            //         for host_socket in host_sockets {
+            //             host_socket.send(host_broadcast);
+            //         }
+            //     }
+            //
+            //     Broadcast::Player(player_broadcast) => {
+            //         for player_socket in player_sockets {
+            //             player_socket.send(player_broadcast);
+            //         }
+            //     }
+            // }
+        }
+    });
+
+    broadcast_sender
 }
