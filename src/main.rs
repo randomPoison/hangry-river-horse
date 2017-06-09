@@ -9,26 +9,40 @@ extern crate serde_json;
 extern crate ws;
 
 use api::*;
+use broadcast::*;
 use rocket::response::*;
 use std::io;
 use std::path::*;
 
 mod api;
+mod broadcast;
 
+#[get("/")]
+fn static_serve_player() -> io::Result<NamedFile> {
+    NamedFile::open(Path::new("www/client.html"))
+}
+
+#[get("/display")]
+fn static_serve_display() -> io::Result<NamedFile> {
+    NamedFile::open(Path::new("www/host.html"))
+}
+
+/// Serves files from the `www/` directory.
 #[get("/<file..>")]
-fn static_serve(file: PathBuf) -> io::Result<NamedFile> {
+fn static_serve(mut file: PathBuf) -> io::Result<NamedFile> {
     NamedFile::open(Path::new("www/").join(file))
 }
 
 fn main() {
     // Start websocket servers for broadcasting messages to host clients and player clients. The
-    // resulting `Broadcaster<T>` objects are given to Rocket as managed state.
-    let client_broadcaster = api::start_websocket_server::<PlayerBroadcast>("localhost:6768");
-    let host_broadcaster = api::start_websocket_server::<HostBroadcast>("localhost:6769");
+    // resulting `Broadcaster<T>` objects are given to Rocket as managed state so that any API
+    // endpoint can broadcast state changes as necessary.
+    let client_broadcaster = broadcast::start_server::<PlayerBroadcast>("localhost:6768");
+    let host_broadcaster = broadcast::start_server::<HostBroadcast>("localhost:6769");
 
     // Start the main Rocket application.
     rocket::ignite()
-        .mount("/", routes![static_serve])
+        .mount("/", routes![static_serve, static_serve_player, static_serve_display])
         .mount("/api", routes![api::register_player])
         .manage(PlayerIdGenerator::new())
         .manage(host_broadcaster)
