@@ -3,7 +3,7 @@
 //! Broadcasts are split between host broadcasts and player broadcasts, based on what info each
 //! one needs.
 
-use api::*;
+use game::*;
 use std::sync::*;
 use std::thread;
 use ws;
@@ -15,6 +15,10 @@ pub type PlayerBroadcaster = Broadcaster<PlayerBroadcast>;
 #[derive(Debug, Serialize)]
 pub enum HostBroadcast {
     PlayerRegistered(PlayerId),
+    PlayerScore {
+        player: PlayerId,
+        score: usize,
+    },
 }
 
 /// A message to be broadcast to connected player clients.

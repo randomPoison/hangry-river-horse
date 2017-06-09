@@ -8,14 +8,16 @@ extern crate serde;
 extern crate serde_json;
 extern crate ws;
 
-use api::*;
 use broadcast::*;
+use game::*;
 use rocket::response::*;
 use std::io;
 use std::path::*;
+use std::sync::*;
 
 mod api;
 mod broadcast;
+mod game;
 
 #[get("/")]
 fn static_serve_player() -> io::Result<NamedFile> {
@@ -29,7 +31,7 @@ fn static_serve_display() -> io::Result<NamedFile> {
 
 /// Serves files from the `www/` directory.
 #[get("/<file..>")]
-fn static_serve(mut file: PathBuf) -> io::Result<NamedFile> {
+fn static_serve(file: PathBuf) -> io::Result<NamedFile> {
     NamedFile::open(Path::new("www/").join(file))
 }
 
@@ -43,9 +45,10 @@ fn main() {
     // Start the main Rocket application.
     rocket::ignite()
         .mount("/", routes![static_serve, static_serve_player, static_serve_display])
-        .mount("/api", routes![api::register_player])
+        .mount("/api", routes![api::register_player, api::feed_player])
         .manage(PlayerIdGenerator::new())
         .manage(host_broadcaster)
         .manage(client_broadcaster)
+        .manage(Mutex::new(Scoreboard::new()))
         .launch();
 }
