@@ -9,7 +9,7 @@ let app = new Vue({
 // Initialize WebSocket connetion without waiting for the DOM to
 // be ready. I don't know if that's actually a good idea, but
 // whatevs.
-let socket = new WebSocket('ws://localhost:6767/api/client-stream');
+let socket = new WebSocket('ws://localhost:6768');
 socket.onmessage = function(event) {
     console.log('socket event: ', event);
 };
