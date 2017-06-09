@@ -1,6 +1,5 @@
-use rocket_contrib::{JSON, Value};
-
 use rocket::State;
+use rocket_contrib::JSON;
 use std::sync::atomic::*;
 use std::sync::*;
 use std::thread;
@@ -44,36 +43,68 @@ pub struct RegisterPlayerResponse {
 }
 
 #[get("/register-player")]
-pub fn register_player(player_id_generator: State<PlayerIdGenerator>, broadcast_sender: State<Mutex<mpsc::Sender<Broadcast>>>) -> JSON<RegisterPlayerResponse> {
-    let next_id = player_id_generator.next_id();
+pub fn register_player(
+    player_id_generator: State<PlayerIdGenerator>,
+    broadcaster: State<Broadcaster<HostBroadcast>>,
+) -> JSON<RegisterPlayerResponse>
+{
+    let player_id = player_id_generator.next_id();
 
     // TODO: Update game state to reflect the registered player.
 
-    // Broadcast to all hosts that a new player has joined.
-    broadcast_sender
-        .lock()
-        .expect("Failed to acquire lock on broadcast sender")
-        .send(Broadcast::Host(HostBroadcast::PlayerRegistered(next_id)))
-        .expect("Failed to send player register broadcast");
+    // broadcast to all hosts that a new player has joined.
+    broadcaster.send(HostBroadcast::PlayerRegistered(player_id));
 
     JSON(RegisterPlayerResponse {
-        id: next_id,
+        id: player_id,
     })
 }
 
-#[derive(Debug, Serialize)]
-pub enum Broadcast {
-    Host(HostBroadcast),
-    Player(PlayerBroadcast),
-}
-
+/// A message to be broadcast to connected host clients.
 #[derive(Debug, Serialize)]
 pub enum HostBroadcast {
     PlayerRegistered(PlayerId),
 }
 
+/// A message to be broadcast to connected player clients.
 #[derive(Debug, Serialize)]
 pub struct PlayerBroadcast;
+
+/// Broadcasts messages to websocket subscribers.
+#[derive(Debug)]
+pub struct Broadcaster<T> {
+    inner: Mutex<mpsc::Sender<T>>,
+}
+
+impl<T> Broadcaster<T> {
+    /// Sends `broadcast` to all websocket listeners.
+    ///
+    /// `send` doesn't return a `Result` because it is always possible to make a broadcast; Even
+    /// there are no clients listening for the broadcast, the "broadcast" will still be vacuously
+    /// successful.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the broadcast thread (started by calling
+    /// [`start_websocket_server`]) has panicked. The broadcast thread panicking indicates that
+    /// there is an error in the program (likely JSON serialization of the broadcast failed), so
+    /// there is no way to recover at that point, hence why `send` panics in turn.
+    ///
+    /// [`start_websocket_server`]: ./fn.start_websocket_server.html
+    pub fn send(&self, broadcast: T) {
+        self.inner
+            // This function is the only place where the mutex is locked, so the mutex can only
+            // get poisoned if this function panics. This function will only panic if the mutex
+            // is poisoned or the broadcast thread has panicked, so either way we can't make
+            // broadcasts. As such, we can safely `expect` the lock operation to succeed.
+            .lock().expect("Somehow the broadcast mutex got poisoned")
+
+            // The same goes for sending the broadcast: This will only return `Err` if the
+            // broadcast thread has panicked, in which case we can't recover anyway, so we may as
+            // well panic this thread while we're at it.
+            .send(broadcast).expect("The broadcast thread has crashed, can no longer make broadcasts");
+    }
+}
 
 /// Spawns the websocket server, returning a sender for broadcasting messages.
 ///
@@ -81,67 +112,52 @@ pub struct PlayerBroadcast;
 /// workaround because Rocket doesn't yet directly support websockets. The returned `mpsc::Sender`
 /// allows for API messages to be sent from any number of threads to the websocket server, at which
 /// point they will be broadcast to any connected clients.
-pub fn start_websocket_server() -> mpsc::Sender<Broadcast> {
-    use ws::*;
-
+pub fn start_websocket_server<T>(server_address: &'static str) -> Broadcaster<T>
+where
+    T: 'static + ::serde::ser::Serialize + Send,
+{
     // Create a sender/reciever pair so that the Rocket server can send messages to be broadcast
     // to all websocket listeners.
     let (broadcast_sender, broadcast_receiver) = mpsc::channel();
-    let (socket_sender, socket_receiver) = mpsc::channel();
+    let (socket_sender, socket_receiver) = mpsc::sync_channel(1);
 
     // Spawn a thread to host the websocket server. The websocket server must listen on a different
     // port than the Rocket server, so we use 6768. As websocket connections are opened, the sender
     // end of the connection is saved so that
     thread::spawn(move || {
-        ws::listen("localhost:6768", |ws_sender| {
-            println!("Made a new websocket connection: {:?}", ws_sender.token());
-
-            // Send the websocket sender to the broadcast thread.
-            socket_sender.send(ws_sender);
+        let mut has_sent = false;
+        ws::listen(server_address, |ws_sender| {
+            // Send the first `Sender` we get to the broadcast thread. It doesn't matter which
+            // one gets sent, any `Sender` can be used to broadcast a message to all websockets
+            // connected to the server.
+            if !has_sent {
+                socket_sender.send(ws_sender).expect("Failed to send socket sender to broadcast thread");
+                has_sent = true;
+            }
 
             // Create a noop handler for the connection. We don't care about listening for messages
             // or doing any advanced handling (for now, at least), so we don't need the handler to
             // to do anything.
             |_| { Ok(()) }
-        });
+        }).expect("Something failed in websocket server");
     });
 
     // Spawn a thread to read broadcasts and multiplex them to the websockets.
     thread::spawn(move || {
-        let mut sockets = Vec::new();
+        // Receive the socket that was sent from the websocket thread. We can use any `Sender` to
+        // broadcast to all socket connections, so we only need to get one.
+        let socket = socket_receiver.recv().expect("Failed to receive a websocket sender ;__;");
 
+        // Pull broadcasts from the channel, serialize each one to JSON, then broadcast it to all
+        // websockets connected to the server.
         for broadcast in broadcast_receiver {
-            // Grab any pending sockets that have been sent.
-            for socket in socket_receiver.try_iter() {
-                sockets.push(socket);
-            }
-
-            // Serialize the broadcast as JSON.
             let payload = ::serde_json::to_string(&broadcast).expect("Failed to serialize payload");
-
-            for socket in &sockets {
-                // TODO: If `send` returns an `Err`, then it means the socket closed (right?). We
-                // should remove closed sockets from `sockets`.
-                socket.send(payload.clone());
-            }
-
-            // TODO: Split messages between host broadcasts and player broadcasts.
-            // Broadcast the message out to all sockets.
-            // match broadcast {
-            //     Broadcast::Host(host_broadcast) => {
-            //         for host_socket in host_sockets {
-            //             host_socket.send(host_broadcast);
-            //         }
-            //     }
-            //
-            //     Broadcast::Player(player_broadcast) => {
-            //         for player_socket in player_sockets {
-            //             player_socket.send(player_broadcast);
-            //         }
-            //     }
-            // }
+            println!("About to broadcast payload: {:?}", payload);
+            socket.broadcast(payload.clone()).unwrap();
         }
     });
 
-    broadcast_sender
+    Broadcaster {
+        inner: Mutex::new(broadcast_sender),
+    }
 }
