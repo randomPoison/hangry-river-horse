@@ -8,11 +8,18 @@ use std::sync::atomic::*;
 /// Registration generates a new `PlayerId`, which is stored inside the server and returned to the
 /// client. If the client disconnects and wants to rejoin, they can continue using the previous
 /// `PlayerId` to avoid losing the player's progress.
+///
+/// # Serialization
+///
+/// `PlayerId` is serialized as a string so that it'll play nice with JavaScript on the client
+/// side. The IDs are meant to be treated as opaque, anyway, so sending them across the wire as
+/// strings makes sense.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlayerId(usize);
 
 impl Serialize for PlayerId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        // TODO: Can we do this without allocating a string?
         let string_id = self.0.to_string();
         serializer.serialize_str(&*string_id)
     }
