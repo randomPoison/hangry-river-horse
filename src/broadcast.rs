@@ -1,6 +1,6 @@
 //! Functionality for broadcasting messages to multiple connected clients.
 //!
-//! Broadcasts are split between display broadcasts and player broadcasts, based on what info each
+//! Broadcasts are split between host broadcasts and player broadcasts, based on what info each
 //! one needs.
 
 use api::*;
