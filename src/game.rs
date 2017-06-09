@@ -1,3 +1,4 @@
+use serde::*;
 use std::collections::HashMap;
 use std::sync::atomic::*;
 
@@ -7,8 +8,23 @@ use std::sync::atomic::*;
 /// Registration generates a new `PlayerId`, which is stored inside the server and returned to the
 /// client. If the client disconnects and wants to rejoin, they can continue using the previous
 /// `PlayerId` to avoid losing the player's progress.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlayerId(usize);
+
+impl Serialize for PlayerId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let string_id = self.0.to_string();
+        serializer.serialize_str(&*string_id)
+    }
+}
+
+impl Deserialize for PlayerId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer {
+        let string_id = String::deserialize(deserializer)?;
+        let id_inner = string_id.parse().map_err(de::Error::custom)?;
+        Ok(PlayerId(id_inner))
+    }
+}
 
 /// Generator for `PlayerId`.
 ///
