@@ -1,0 +1,14 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /hangry-river-horse
+hooks:
+  ApplicationStop:
+    - location: scripts/stop_server
+      timeout: 10
+      runas: root
+  ApplicationStart:
+    - location: scripts/start_server
+      timeout: 10
+      runas: root

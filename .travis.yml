@@ -1,3 +1,33 @@
 language: rust
 rust:
-  - nightly
+- nightly
+script:
+- cargo test
+before_deploy:
+- >
+  if ! [ "$BEFORE_DEPLOY_RUN" ]; then
+    cargo build --release
+    mv target/release/hangry-river-horse .
+    zip -r latest.zip . -x "target/*" -x ".git/*"
+    mkdir -p dpl_cd_upload
+    mv latest.zip dpl_cd_upload/latest.zip
+  fi
+deploy:
+- provider: s3
+  access_key_id: AKIAIOLLQXCYHSGK2BVA
+  secret_access_key: &1
+    secure: jb67wtEVyNuKtUoo6NlMGPkJBP3s9Hx/gU2AIxpqtT4JpIvS1/W62rH/1U4pZPPKzR+/KAXsYhw6GHgtRWRxff7w0uGG/bWVRVF1zOcl7NWbH8oGSp8QWsapzFDvW4qOchY8gamsSFLwkhtD2gwVCkMUl4rL+g4CEDRDXjsnJ1ZP6zIOke5CofGny7as7rSsiVQDgFJLZjSF1Rn/93hWYSMz2Lm1DgID0EE3qxSUXFZ0PUGy9Z0RTt7Z7+qkFPr+2kiy1XHBrRk9nfEUqd724b1Lowl8yDjxROA9NgdM/qKTVyj1IJEGUCsterMS5p557mmDV8RKCeZWRZckuZmw9oe3cwppR2wAnBctZ6T40Q6YJ/v+FkD4wlFfZgPa5IbUfJE8RT7FnK89h7XovIqqzm1XI6SrAP4mOIYPf/Wsw7pGg4rwztZAmVoRT1Bvho01TJNmtdHFGoW1aL5XZ6Sx4xm4qrv3dSKp8Fja+hM87F9qMVBrnbenkLQuwUSk6qYKdZcRxMClvwiRUQM1iTphlOujtT8xhfxcYLUlULy4sC2c6Jted0WnRg9f4C0NWeFbE0/qtZoQe4P2+qTYvwH3fOQ1Uy3HD7TSIkvOTmlBo20GXjQAUj0q9DpjVdIWzbVxqD1RfuaFI1NuS6cdhR+86PUjL32koPRe6XL8vn1OCQs=
+  local_dir: dpl_cd_upload
+  skip_cleanup: true
+  on: &2
+    repo: excaliburHisSheath/hangry-river-horse
+  bucket: hangry-river-horse
+- provider: codedeploy
+  access_key_id: AKIAIOLLQXCYHSGK2BVA
+  secret_access_key: *1
+  bucket: hangry-river-horse
+  key: latest.zip
+  bundle_type: zip
+  application: DemoApplication
+  deployment_group: production
+  on: *2
