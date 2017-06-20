@@ -3,9 +3,32 @@
 // Initialize Vue.js with some info I guess.
 let app = new Vue({
     el: '#app-root',
+
     data: {
         id: null,
-    }
+        score: 0,
+    },
+
+    methods: {
+        feedMe: function () {
+            let payload = {
+                player: this.id,
+            };
+
+            // Animate the text in the center of the screen to give the user some feedback when
+            // they tap.
+            TweenMax.fromTo(
+                '#centered-text',
+                0.1,
+                { scale: 1 },
+                { scale: 1.2, yoyo: true, repeat: 1 },
+            );
+
+            post('api/feed-me', payload, response => {
+                this.score = response.score;
+            });
+        },
+    },
 });
 
 // Initialize WebSocket connetion without waiting for the DOM to be ready. I don't know if that's
@@ -25,18 +48,7 @@ socket.onclose = function() {
 };
 
 // Register the player with the backend.
-get('/api/register-player', response => {
-    console.log('Registration result: ', response)
+get('api/register-player', response => {
+    console.log('Registration result: ', response);
     app.id = response.id;
 });
-
-// Callback for "Feed Me" button. Sends a message to the backend notifying that
-// a hippo has been fed.
-function feedMe() {
-    let payload = {
-        player: app.id,
-    };
-    post('/api/feed-me', payload, response => {
-        console.log('feed-me response: ', response);
-    });
-}
