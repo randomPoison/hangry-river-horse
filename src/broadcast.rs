@@ -8,17 +8,52 @@ use std::sync::*;
 use std::thread;
 use ws;
 
-pub type HostBroadcaster = Broadcaster<HostBroadcast>;
-pub type PlayerBroadcaster = Broadcaster<PlayerBroadcast>;
+pub type HostBroadcaster = Arc<Broadcaster<HostBroadcast>>;
+pub type PlayerBroadcaster = Arc<Broadcaster<PlayerBroadcast>>;
 
 /// A message to be broadcast to connected host clients.
 #[derive(Debug, Serialize)]
 pub enum HostBroadcast {
-    PlayerRegistered(PlayerData),
-    PlayerScore {
+    /// A new player has joined the game and should be added to the display.
+    PlayerRegister {
+        // The ID of the new player.
         id: PlayerId,
+
+        // The player's display name.
+        username: String,
+
+        /// The starting score for the player.
         score: usize,
+
+        /// The starting number of balls in the player's food pile.
+        balls: usize,
     },
+
+    /// A player has added a ball to their food pile.
+    AddBall {
+        /// The ID of the player who got the ball.
+        id: PlayerId,
+
+        /// The total number of balls in the player's food pile.
+        balls: usize,
+    },
+
+    /// A hippo has eaten a ball from their food pile.
+    HippoEat {
+        /// The ID for the player whose hippo ate the ball.
+        id: PlayerId,
+
+        /// The player's total score.
+        score: usize,
+
+        /// The total number of balls in the player's food pile.
+        balls: usize,
+    },
+
+    /// A player has lost the game and should be removed from the display.
+    PlayerLose {
+        id: PlayerId,
+    }
 }
 
 /// A message to be broadcast to connected player clients.
@@ -67,7 +102,7 @@ impl<T> Broadcaster<T> {
 /// workaround because Rocket doesn't yet directly support websockets. The returned `mpsc::Sender`
 /// allows for API messages to be sent from any number of threads to the websocket server, at which
 /// point they will be broadcast to any connected clients.
-pub fn start_server<T>(server_address: &'static str) -> Broadcaster<T>
+pub fn start_server<T>(server_address: &'static str) -> Arc<Broadcaster<T>>
 where
     T: 'static + ::serde::ser::Serialize + Send,
 {
@@ -107,12 +142,11 @@ where
         // websockets connected to the server.
         for broadcast in broadcast_receiver {
             let payload = ::serde_json::to_string(&broadcast).expect("Failed to serialize payload");
-            println!("About to broadcast payload: {:?}", payload);
             socket.broadcast(payload.clone()).unwrap();
         }
     });
 
-    Broadcaster {
+    Arc::new(Broadcaster {
         inner: Mutex::new(broadcast_sender),
-    }
+    })
 }

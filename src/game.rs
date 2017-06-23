@@ -1,7 +1,11 @@
+use broadcast::*;
 use rand::*;
 use serde::*;
 use std::collections::HashMap;
+use std::sync::*;
 use std::sync::atomic::*;
+use std::thread;
+use std::time::*;
 
 /// Uniquely identifies a connected player.
 ///
@@ -131,12 +135,9 @@ pub fn generate_username() -> String {
     thread_rng().choose(NAMES).unwrap().to_string()
 }
 
-pub type Scoreboard = HashMap<PlayerId, usize>;
-pub type Usernames = HashMap<PlayerId, String>;
-
 /// The current state for a single player.
-#[derive(Debug, Serialize)]
-pub struct PlayerData {
+#[derive(Debug)]
+pub struct Player {
     /// A unique identifier for the player.
     pub id: PlayerId,
 
@@ -145,4 +146,58 @@ pub struct PlayerData {
 
     /// The player's current score.
     pub score: usize,
+
+    /// The number of balls in the player's food pile.
+    pub balls: usize,
+
+    /// The time at which the player's hippo will next eat a ball.
+    pub next_eat_time: Instant,
+}
+
+pub type PlayerMap = Arc<RwLock<HashMap<PlayerId, Player>>>;
+
+pub fn start_game_loop(players: PlayerMap, host_broadcaster: HostBroadcaster) {
+    thread::spawn(move || {
+        loop {
+            let now = Instant::now();
+            {
+                let mut players = players.write().expect("Hippo map was poisoned!");
+                players.retain(|&id, player| {
+                    // Ignore hippos that are not ready to eat.
+                    if now < player.next_eat_time { return true; }
+
+
+                    // Try to eat a ball. If there's one for the hippo to eat, we get a point.
+                    // Otherwise, the hippo is le dead.
+                    if player.balls > 0 {
+                        // Eat a ball, get a point.
+                        player.balls -= 1;
+                        player.score += 1;
+
+                        // Broadcast the new score to all hosts.
+                        host_broadcaster.send(HostBroadcast::HippoEat {
+                            id,
+                            score: player.score,
+                            balls: player.balls,
+                        });
+
+                        // Determine the next time the player's hippo will eat.
+                        player.next_eat_time += Duration::from_millis(750);
+
+                        true
+                    } else {
+                        // Notify the hosts the the player lost.
+                        host_broadcaster.send(HostBroadcast::PlayerLose { id });
+
+                        // TODO: Notify the player that they lost.
+
+                        // Remove the player from the players map.
+                        false
+                    }
+                });
+            }
+
+            thread::sleep(Duration::from_millis(100));
+        }
+    });
 }

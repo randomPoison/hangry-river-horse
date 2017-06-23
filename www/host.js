@@ -22,12 +22,13 @@ let app = new Vue({
 });
 
 Vue.component('hippo-head', {
-    props: ['name', 'score', 'id'],
+    props: ['name', 'score', 'id', 'balls'],
     template: `
     <div class="hippo-head">
         <div class="hippo-text">
             <div class="hippo-name">{{ name }}</div>
             <div class="hippo-score">Score: {{ score }}</div>
+            <div class="hippo=balls">Balls: {{ balls }}</div>
         </div>
         <img src="assets/hippo.jpg" class="hippo-head-image" :id="id">
     </div>
@@ -56,10 +57,18 @@ socket.onmessage = (event) => {
     // TODO: Do some validation on the payload data I guess.
     let payload = JSON.parse(event.data);
 
-    if (payload['PlayerRegistered']) {
-        registerPlayer(payload['PlayerRegistered']);
-    } else if (payload['PlayerScore']) {
-        let info = payload['PlayerScore'];
+    if (payload['PlayerRegister']) {
+        registerPlayer(payload['PlayerRegister']);
+    } else if (payload['AddBall']) {
+        let info = payload['AddBall'];
+
+        // Find the hippo/player for the player that scored.
+        let hippo = app.hippoMap[info.id];
+        assert(hippo != null, 'Unable to find hippo for ID: ' + info.id);
+
+        hippo.player.balls = info.balls;
+    } else if (payload['HippoEat']) {
+        let info = payload['HippoEat'];
 
         // Find the hippo/player for the player that scored.
         let hippo = app.hippoMap[info.id];
@@ -67,11 +76,12 @@ socket.onmessage = (event) => {
 
         // Updated the local score for the player.
         hippo.player.score = info.score;
+        hippo.player.balls = info.balls;
 
         // Animate the hippo head to match the score increase. The direction of the chomp animation
         // depends on the side of the screen that the hippo is on.
         let element = document.getElementById(hippo.player.id);
-        switch (hippo.side) {
+        switch (hippo.side.side) {
             case TOP_SIDE: {
                 TweenMax.fromTo(
                     element,
@@ -108,9 +118,24 @@ socket.onmessage = (event) => {
                 );
             } break;
 
-            default: throw new Error('Unrecognized hippo side: ' + hippo.side);
+            default: throw new Error('Unrecognized hippo side: ' + hippo.side.side);
         }
+    } else if (payload['PlayerLose']) {
+        let info = payload['PlayerLose'];
+
+        // Retreive the hippo and remove it from the hippo map.
+        let hippo = app.hippoMap[info.id];
+        assert(delete app.hippoMap[info.id], 'Unable to remove player for id ' + info.id);
+
+        // Remove the hippo from its side of the screen.
+        let index = hippo.side.array.indexOf(hippo);
+        hippo.side.array.splice(index, 1);
+    } else {
+        console.error('Unrecognized host event:', payload);
     }
+};
+socket.onclose = (event) => {
+    console.error('Socket closed:', event);
 };
 
 // When we first boot up we need to get the current list of players.
@@ -135,7 +160,7 @@ function registerPlayer(player) {
     // Create a hippo object for the player.
     let hippo = {
         player: player,
-        side: side.side,
+        side: side,
     };
 
     // Add the hippo to the hippo map and its side of the screen.
