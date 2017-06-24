@@ -58,7 +58,28 @@ pub enum HostBroadcast {
 
 /// A message to be broadcast to connected player clients.
 #[derive(Debug, Serialize)]
-pub struct PlayerBroadcast;
+pub enum PlayerBroadcast {
+    /// A hippos has eaten a ball from their food pile.
+    HippoEat {
+        /// The ID for the player that this event applies to.
+        id: PlayerId,
+
+        /// The player's current score.
+        score: usize,
+
+        /// The total number of balls in the player's food pile.
+        balls: usize,
+    },
+
+    /// A player has lost the game and has been removed.
+    PlayerLose {
+        /// The ID for the player that thi event applies to.
+        id: PlayerId,
+
+        /// The final score for the player that lost.
+        score: usize,
+    },
+}
 
 /// Broadcasts messages to websocket subscribers.
 #[derive(Debug)]
