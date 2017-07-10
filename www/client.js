@@ -9,13 +9,18 @@ let app = new Vue({
         hippoName: null,
         score: null,
         isPlaying: true,
+        noseGoes: {
+            isActive: false,
+            marbleX: 0,
+            marbleY: 0,
+        },
     },
 
     methods: {
         feedMe: function () {
             // If the user taps after they've lost, don't do anything.
             // TODO: Can we have Vue remove the binding when `isPlaying` is false?
-            if (!this.isPlaying) {
+            if (!this.isPlaying || this.noseGoes.isActive) {
                 return;
             }
 
@@ -41,6 +46,21 @@ let app = new Vue({
 
         reload: function () {
             window.location.reload(false);
+        },
+
+        poisonMarble: function () {
+            post(`/api/nose-goes/${this.id}`, {}, response => {
+                if (response === 'Survived') {
+                    // TODO: What do we do if the player survived?
+                } else if (response === 'Died') {
+                    // TODO: Do we handle the player's death now or what?
+                    app.isPlaying = false;
+                } else {
+                    console.error('Unrecognized nose-goes result:', response);
+                }
+            });
+
+            this.noseGoes.isActive = false;
         }
     },
 });
@@ -49,10 +69,22 @@ let app = new Vue({
 // actually a good idea, but whatevs.
 let socket = new WebSocket('ws://' + window.location.hostname + ':6768');
 socket.onmessage = function(event) {
+    // Ignore websocket events if the game is over or there's a nose-goes event.
+    if (!app.isPlaying && !app.noseGoes.isActive) {
+        return;
+    }
+
     // TODO: Do some kind of validation.
     let payload = JSON.parse(event.data);
 
-    if (payload['HippoEat']) {
+    if (payload === 'BeginNoseGoes') {
+        app.noseGoes.isActive = true;
+        app.noseGoes.marbleX = Math.random();
+        app.noseGoes.marbleY = Math.random();
+    } else if (payload['EndNoseGoes']) {
+        // TODO: Do some kind of animation when the player is the one who lost?
+        app.noseGoes.isActive = false;
+    } else if (payload['HippoEat']) {
         let event = payload['HippoEat'];
         if (event.id === app.id) {
             app.score = event.score;
