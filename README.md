@@ -10,7 +10,7 @@ Artists Among Us showcase.
 
 ## Contributing
 
-HRH is built using [Rust]+[Rocket] on the backend, and JavaScript+[Phaser] on
+HRH is built using [Rust]+[Rocket] on the backend, and JavaScript+[Vue.js] on
 the front end. In order to work on HRH you'll need to install Rust.
 
 To install Rust, use [Rustup]. Rustup is the official tool for installing Rust,
@@ -75,7 +75,7 @@ need to do any manual deployment work!
 [Rust]: https://www.rust-lang.org/
 [Rustup]: https://rustup.rs/
 [Rocket]: https://rocket.rs/
-[Phaser]: http://phaser.io/
+[Vue.js]: https://vuejs.org/
 [setup with Travis]: https://travis-ci.org/excaliburHisSheath/hangry-river-horse
 [Rust Style Guide]: https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/guide/guide.md
 [official code example]: https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/example/lists.rs

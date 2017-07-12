@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 0.4 - Nose-goes!
+
+For this release we rolled back to the one-tap-earns-one-point model, and instead added a new nose-goes mechanic. Every 30 seconds a nose-goes event begins. During this event each player will see a poison marble appear on their screen. Everybody has 10 seconds to tap the marble to get rid of it. The last player to have not tapped their poison marble gets knocked out. In the next few releases we'll be iterating on this mechanic, as well as adding other ways for players to interact with each other.
+
+### Features
+
+- Revert the hippo feeding mechanic. ([#46](http://github.com/excaliburHisSheath/hangry-river-horse/pull/46))
+- Add nose-goes mechanic. ([#47](http://github.com/excaliburHisSheath/hangry-river-horse/pull/47))
+
 ## Version 0.3 - It's Raining Marbles!
 
 For this release we experimented with adding idle-game mechanics that would allow the game to be played over a longer period of time. While this is an interesting concept, it's not the direction that we want to take HungryHipp.us in for now. For the next release we'll be trying something new.
