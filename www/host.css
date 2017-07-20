@@ -48,7 +48,6 @@ body {
 
 .horizontal-side, .vertical-side {
     display: flex;
-    justify-content: space-around;
     flex-wrap: nowrap;
 }
 
@@ -87,6 +86,18 @@ body {
     position: relative;
     height: 100px;
     text-align: center;
+
+    /*
+     * Allow the hippo head container to expand, causing the hippos to space themselves evently
+     * along their side of the screen.
+     */
+    flex-grow: 1;
+}
+
+.vertical-side .hippo-head {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .hippo-head-image {
@@ -179,4 +190,40 @@ body {
 
     font-size: 600%;
     color: red;
+}
+
+/* Animation styles */
+/* ================ */
+
+.hippo-head {
+    transition: all 1s;
+}
+
+.hippo-enter, .hippo-leave-to {
+    opacity: 0;
+    flex-grow: 0;
+}
+
+.horizontal-side .hippo-enter, .horizontal-side .hippo-leave-to {
+    width: 0;
+}
+
+.vertical-side .hippo-enter, .vertical-side .hippo-leave-to {
+    height: 0;
+}
+
+#top-side .hippo-enter, #top-side .hippo-leave-to {
+    transform: translateY(-100%);
+}
+
+#right-side .hippo-enter, #right-side .hippo-leave-to {
+    transform: translateX(100%);
+}
+
+#bottom-side .hippo-enter, #bottom-side .hippo-leave-to {
+    transform: translateY(100%);
+}
+
+#left-side .hippo-enter, #left-side .hippo-leave-to {
+    transform: translateX(-100%);
 }
