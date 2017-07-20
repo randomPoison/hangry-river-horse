@@ -9,6 +9,8 @@ body {
     overflow: hidden;
 
     font-family: 'Baloo', cursive;
+
+    background-color: #70bd8e;
 }
 
 #vue-root {
@@ -88,9 +90,7 @@ body {
 }
 
 .hippo-head-image {
-    /* TODO: Can we make this scale better? */
     width: 100px;
-    height: 100px;
 
     /* Make the position relative so we can tween its position with top, right, left, bottom. */
     position: relative;
@@ -99,8 +99,6 @@ body {
 .hippo-text {
     position: absolute;
     white-space: nowrap;
-
-    z-index: 1;
 }
 
 .food-pile {
@@ -164,11 +162,11 @@ body {
     transform: translate(-50%, -50%);
     white-space: nowrap;
 
-    font-size: 170%;
+    font-size: 250%;
 }
 
 #site-address {
-    font-size: 130%;
+    font-size: 150%;
     color: #bc00a6;
 }
 
@@ -179,6 +177,6 @@ body {
     transform: translate(-50%, -50%);
     white-space: nowrap;
 
-    font-size: 300%;
+    font-size: 600%;
     color: red;
 }

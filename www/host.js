@@ -40,7 +40,7 @@ Vue.component('hippo-head', {
             <div class="hippo-score">Score: {{ hippo.player.score }}</div>
         </div>
         <img src="assets/marbles.jpg" class="food-pile">
-        <img src="assets/hippo.jpg" class="hippo-head-image" :id="hippo.player.id">
+        <img src="assets/hippo.png" class="hippo-head-image" :id="hippo.player.id">
     </div>
     `,
 
