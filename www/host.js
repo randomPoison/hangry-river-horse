@@ -36,34 +36,12 @@ Vue.component('hippo-head', {
     template: `
     <div class="hippo-head">
         <div class="hippo-text">
-            <div class="hippo-name">{{ hippo.player.name }}</div>
-            <div class="hippo-score">Score: {{ hippo.player.score }}</div>
+            <div class="name">{{ hippo.player.name }}</div>
+            <div class="score">{{ hippo.player.score }}</div>
         </div>
-        <img src="assets/marbles.jpg" class="food-pile">
         <img src="assets/hippo.png" class="hippo-head-image" :id="hippo.player.id">
     </div>
     `,
-
-    methods: {
-        enter: function (element, done) {
-            let x = Number(element.getAttribute('x'));
-            let y = Number(element.getAttribute('y'));
-
-            TweenMax.from(
-                element,
-                0.8,
-                {
-                    x: x * 3,
-                    y: y * 3,
-                    opacity: 0.3,
-                    scale: 3.0,
-                    zIndex: 10,
-                    ease: Bounce.easeOut,
-                    onComplete: done,
-                },
-            );
-        },
-    },
 });
 
 // Helpers to allow us to place hippos in clockwise order. By cycling through this array, we choose

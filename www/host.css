@@ -8,9 +8,10 @@ body {
     /* Make sure scroll bars never show up, and the game is always full-screen. */
     overflow: hidden;
 
-    font-family: 'Baloo', cursive;
+    font-family: 'Baloo', sans-serif;
 
-    background-color: #70bd8e;
+    background-color: #61a498;
+    background-image: url('assets/host_background.jpg');
 }
 
 #vue-root {
@@ -18,6 +19,8 @@ body {
     height: 100vh;
 }
 
+/* Styles for the side containers. */
+/* =============================== */
 #top-side {
     position: absolute;
     top: 0;
@@ -49,6 +52,7 @@ body {
 .horizontal-side, .vertical-side {
     display: flex;
     flex-wrap: nowrap;
+    justify-content: center;
 }
 
 .horizontal-side {
@@ -59,11 +63,6 @@ body {
     padding: 0 200px; /* Horizontal margins should match hippo head size. */
 }
 
-.horizontal-side .hippo-text {
-    left: 50%;
-    transform: translateX(-50%);
-}
-
 .vertical-side {
     height: 100%;
     width: auto;
@@ -72,20 +71,14 @@ body {
     padding: 200px 0; /* Vertical margins should match hippo head size. */
 }
 
-.vertical-side .hippo-text {
-    top: 50%;
-    transform: translateY(-50%);
-}
-
 .side-contents {
     width: 100%;
     height: 100%;
 }
 
 .hippo-head {
-    position: relative;
-    height: 100px;
-    text-align: center;
+    /* We use flexbox to position the label on the outside and the hippo head on the inside. */
+    display: flex;
 
     /*
      * Allow the hippo head container to expand, causing the hippos to space themselves evently
@@ -94,13 +87,26 @@ body {
     flex-grow: 1;
 }
 
+/*
+ * Center hippo heads and name tags within their container divs. This ensures that the hippos stay
+ * centered correctly as they enter and leave, since the size of the container grows/shrinks
+ * during the transition.
+ */
+.horizontal-side .hippo-head-image {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .vertical-side .hippo-head {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: center;
 }
 
 .hippo-head-image {
+    display: block;
     width: 100px;
 
     /* Make the position relative so we can tween its position with top, right, left, bottom. */
@@ -108,71 +114,85 @@ body {
 }
 
 .hippo-text {
-    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 10px;
+    padding: 0;
+
+    width: 120px;
     white-space: nowrap;
+    text-align: center;
+
+    border-radius: 10px;
+
+    background-color: white;
 }
 
-.food-pile {
-    position: absolute;
-    width: 100px;
-    height: 100px;
+.hippo-text div {
+    background-color: white;
+    padding: 0px 5px;
+    border-radius: 10px;
+}
+
+.hippo-text .name {
+    font-size: 130%;
+}
+
+.hippo-text .score {
+    font-size: 200%;
+}
+
+.horizontal-side .hippo-text {
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* Top side styles. */
-#top-side .hippo-text {
-    top: 200px;
-}
-
-#top-side .food-pile {
-    top: 100px;
+#top-side .hippo-head {
+    flex-direction: column;
 }
 
 /* Right side styles. */
-#right-side .hippo-text {
-    right: 200px;
+#right-side .hippo-head {
+    flex-direction: row-reverse;
 }
 
 #right-side .hippo-head-image {
     transform: rotate(90deg);
 }
 
-#right-side .food-pile {
-    right: 100px;
-}
-
 /* Bottom side styles. */
-#bottom-side .hippo-text {
-    bottom: 200px;
+#bottom-side .hippo-head {
+    flex-direction: column-reverse;
 }
 
 #bottom-side .hippo-head-image {
     transform: rotate(180deg);
 }
 
-#bottom-side .food-pile {
-    bottom: 100px;
-}
-
 /* Left side styles. */
-#left-side .hippo-text {
-    left: 200px;
+#left-side .hippo-head {
+    flex-direction: row;
 }
 
 #left-side .hippo-head-image {
     transform: rotate(-90deg);
 }
 
-#left-side .food-pile {
-    left: 100px;
-}
-
-#attract-message {
+/* Things that go in the center of the screen. */
+/* =========================================== */
+.center-item {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    white-space: nowrap;
 
+    white-space: nowrap;
+}
+
+#attract-message {
     font-size: 250%;
 }
 
@@ -182,18 +202,12 @@ body {
 }
 
 #nose-goes {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    white-space: nowrap;
-
     font-size: 600%;
     color: red;
 }
 
-/* Animation styles */
-/* ================ */
+/* Enter and exit transition configurations. */
+/* ========================================= */
 
 .hippo-head {
     transition: all 1s;
