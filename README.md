@@ -1,7 +1,5 @@
 # Hangry River Horse [![Build Status](https://travis-ci.org/excaliburHisSheath/hangry-river-horse.svg?branch=master)](https://travis-ci.org/excaliburHisSheath/hangry-river-horse)
 
----
-
 > Go to http://hungryhipp.us/ to see the current version in action!
 
 Hangry River Horse is a competitive multiplayer game inspired by the classic
@@ -72,6 +70,11 @@ until the build passes. Once changes are merged into `master`, Travis will
 automatically deploy the new version of the app to http://hungryhipp.us/, no
 need to do any manual deployment work!
 
+# Asset Licensing
+
+
+Icons made by [Freepik] from [Flaticon] is licensed by [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/).
+
 [Rust]: https://www.rust-lang.org/
 [Rustup]: https://rustup.rs/
 [Rocket]: https://rocket.rs/
@@ -79,3 +82,5 @@ need to do any manual deployment work!
 [setup with Travis]: https://travis-ci.org/excaliburHisSheath/hangry-river-horse
 [Rust Style Guide]: https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/guide/guide.md
 [official code example]: https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/example/lists.rs
+[Freepik]: http://www.freepik.com
+[Flaticon]: https://www.flaticon.com/

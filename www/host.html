@@ -91,13 +91,19 @@
                 ></hippo-head>
             </transition-group>
 
-            <div id="attract-message" class="center-item" v-show="!noseGoes.isActive">
+            <div id="attract-message" class="center-item" v-show="!noseGoes.isActive && !deathMessage.isActive">
                 Go to <span id="site-address">http://hungryhipp.us/</span> to play!
             </div>
 
             <div id="nose-goes" class="center-item" v-show="noseGoes.isActive">
                 Look at your phone!
             </div>
+
+            <transition name="death-message">
+                <div id="death-message" class="center-item" v-if="deathMessage.isActive && !noseGoes.isActive">
+                    <span class="name">{{ deathMessage.hippoName }}</span> ate a poison marble and died!
+                </div>
+            </transition>
         </div>
 
         <!-- Load script for the host. -->

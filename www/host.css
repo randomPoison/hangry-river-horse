@@ -77,6 +77,7 @@ body {
 }
 
 .hippo-head {
+
     /* We use flexbox to position the label on the outside and the hippo head on the inside. */
     display: flex;
 
@@ -85,24 +86,26 @@ body {
      * along their side of the screen.
      */
     flex-grow: 1;
+
+    /*
+     * Center hippo heads and name tags within their container divs. This ensures that the hippos stay
+     * centered correctly as they enter and leave, since the size of the container grows/shrinks
+     * during the transition.
+     */
+    justify-content: center;
+    align-items: center;
 }
 
 /*
- * Center hippo heads and name tags within their container divs. This ensures that the hippos stay
- * centered correctly as they enter and leave, since the size of the container grows/shrinks
- * during the transition.
+ * Specify a base size for the hippo head. This allows for the enter/exit transitions to
+ * animate the hippo's size smoothly.
  */
-.horizontal-side .hippo-head-image {
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
+.horizontal-side .hippo-head {
+    width: 100px;
 }
 
 .vertical-side .hippo-head {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    height: 100px;
 }
 
 .hippo-head-image {
@@ -144,9 +147,18 @@ body {
     font-size: 200%;
 }
 
-.horizontal-side .hippo-text {
-    margin-left: auto;
-    margin-right: auto;
+.poison-pill {
+    position: absolute;
+
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+
+    background-color: red;
+    background-image: url("assets/skull.png");
+    background-size: 60px;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 /* Top side styles. */
@@ -206,11 +218,25 @@ body {
     color: red;
 }
 
+#death-message {
+    font-size: 250%;
+}
+
+#death-message .name {
+    color: red;
+    font-size: 150%;
+}
+
 /* Enter and exit transition configurations. */
 /* ========================================= */
 
 .hippo-head {
     transition: all 1s;
+}
+
+/* Delay the leave animation for long enough for us to play the death animation. */
+.hippo-leave-active {
+    transition-delay: 3s;
 }
 
 .hippo-enter, .hippo-leave-to {
@@ -240,4 +266,26 @@ body {
 
 #left-side .hippo-enter, #left-side .hippo-leave-to {
     transform: translateX(-100%);
+}
+
+/* Poison pill animation configuration. */
+/* ==================================== */
+.poison-pill {
+    transition: all 1s;
+}
+
+.poison-enter {
+    transform: scale(5);
+    opacity: 0;
+}
+
+/* Death message animation configuration. */
+/* ====================================== */
+.death-message-enter-active {
+    transition: all 0.2s;
+}
+
+.death-message-enter {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
 }

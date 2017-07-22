@@ -27,6 +27,11 @@ let app = new Vue({
         noseGoes: {
             isActive: false,
         },
+
+        deathMessage: {
+            isActive: false,
+            hippoName: null,
+        }
     },
 });
 
@@ -40,6 +45,9 @@ Vue.component('hippo-head', {
             <div class="score">{{ hippo.player.score }}</div>
         </div>
         <img src="assets/hippo.png" class="hippo-head-image" :id="hippo.player.id">
+        <transition name="poison">
+            <div class="poison-pill" :id="'poison-' + hippo.player.id" v-if="hippo.isDead"></div>
+        </transition>
     </div>
     `,
 });
@@ -129,6 +137,7 @@ function addPlayer(player) {
     let hippo = {
         player: player,
         side: side,
+        isDead: false,
     };
 
     // Add the hippo to the hippo map and its side of the screen.
@@ -142,11 +151,21 @@ function addPlayer(player) {
  */
 function removePlayer(player) {
     let hippo = app.hippoMap[player];
-    assert(delete app.hippoMap[player], 'Unable to remove player for id ' + player);
+    hippo.isDead = true;
+    app.deathMessage.isActive = true;
+    app.deathMessage.hippoName = hippo.player.name;
 
-    // Remove the hippo from its side of the screen.
-    let index = hippo.side.array.indexOf(hippo);
-    hippo.side.array.splice(index, 1);
+    // Delay actually removing the hippo until Vue has detected that we've set the `isDead` flag.
+    // This ensures that that poison pill animation starts.
+    Vue.nextTick(() => {
+        assert(delete app.hippoMap[player], 'Unable to remove player for id ' + player);
+
+        // Remove the hippo from its side of the screen.
+        let index = hippo.side.array.indexOf(hippo);
+        hippo.side.array.splice(index, 1);
+    });
+
+    setTimeout(() => { app.deathMessage.isActive = false; }, 5000);
 }
 
 // Start the attract animation.
