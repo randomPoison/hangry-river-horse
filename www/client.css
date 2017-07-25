@@ -4,23 +4,11 @@ body {
     padding: 0;
     margin: 0;
     overflow: hidden;
-}
 
-h1 {
-    margin: 0;
-}
+    background-color: #61a498;
+    background-image: url('assets/host_background.jpg');
 
-h2 {
-    margin: 0;
-}
-
-#app-root {
-    width: 100vw;
-    height: 100vh;
-    box-sizing: border-box;
-
-    overflow: hidden;
-
+    /* Disable text selection so the user doesn't accidentally highlight text while tapping. */
     -webkit-touch-callout: none; /* iOS Safari */
     -webkit-user-select: none; /* Safari */
     -khtml-user-select: none; /* Konqueror HTML */
@@ -28,21 +16,59 @@ h2 {
     -ms-user-select: none; /* Internet Explorer/Edge */
     user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
 
+    overflow: hidden;
+
     font-family: 'Baloo', cursive;
     text-align: center;
+}
+
+button {
+    font-family: 'Baloo', cursive;
+}
+
+h1 {
+    font-size: 200%;
+}
+
+h2 {
+    font-size: 170%;
+}
+
+#app-root {
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
 
     padding: 20px;
 }
 
-@media all and (orientation: portrait) {
+@media (orientation: portrait) {
     * {
         font-size: 5vw;
     }
+
+    #poison-marble, #poison-marble-flash {
+        width: 20vw;
+        height: 20vw;
+    }
+
+    #game-over-skull {
+        height: 70vw;
+    }
 }
 
-@media all and (orientation: landscape) {
+@media (orientation: landscape) {
     * {
         font-size: 5vh;
+    }
+
+    #poison-marble, #poison-marble-flash {
+        width: 20vh;
+        height: 20vh;
+    }
+
+    #game-over-skull {
+        height: 70vh;
     }
 }
 
@@ -55,12 +81,29 @@ h2 {
     width: calc(100% - 40px);
 }
 
+.hippo-name {
+    color: #bc00a6;
+}
+
+#name {
+    font-size: 170%
+}
+
 #tap-text {
     font-size: 200%;
 }
 
+#score-text {
+    color: #bc00a6;
+    font-size: 170%;
+}
+
 #lose-screen {
     font-size: 150%;
+}
+
+#lose-screen h2 {
+    margin: 0;
 }
 
 #game-over-text {
@@ -71,16 +114,20 @@ h2 {
     padding-bottom: 30px;
 }
 
+#game-over-skull {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -10;
+}
+
 button {
     background-color: #bc00a6;
     color: white;
     border-style: none;
     padding: 20px;
-    border-radius: 5px;
-}
-
-.hippo-name {
-    color: #bc00a6;
+    border-radius: 15px;
 }
 
 #nose-goes-overlay {
@@ -95,16 +142,18 @@ button {
     background-color: rgba(0, 0, 0, 0.5);
 }
 
-#poison-marble {
-    width: 100px;
-    height: 100px;
-    border-radius: 50px;
-
-    transform: translate(-50%, -50%);
+#poison-marble, #poison-marble-flash {
+    border-radius: 50%;
 
     position: absolute;
+    transform: translate(-50%, -50%);
 
     background-color: red;
+    color: white;
+}
+
+#poison-marble {
+    z-index: 1;
 }
 
 #poison-marble-text {
@@ -113,4 +162,88 @@ button {
     left: 50%;
     transform: translate(-50%, -50%);
     white-space: nowrap;
+}
+
+#hippo-root {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 40%);
+
+    z-index: -1;
+}
+
+.crown {
+    position: absolute;
+
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -60%);
+
+    width: 70%;
+}
+
+/* Score animation configuration. */
+/* ============================== */
+
+.score-enter-active {
+    transition: all 0.2s;
+}
+
+.score-enter {
+    opacity: 0;
+    transform: scale(3);
+}
+
+.score-leave-active {
+    display: none;
+}
+
+/* Hippo head animation configuration. */
+/* =================================== */
+
+.hippo-enter-active, .hippo-leave-active {
+    transition: all 1s;
+}
+
+#hippo-root.hippo-enter {
+    transform: translate(-50%, 100%);
+}
+
+#hippo-root.hippo-leave-to {
+    opacity: 0;
+    transform: translate(-50%, 100%);
+}
+
+/* Crown animation configuration. */
+/* ============================== */
+
+.crown-enter-active {
+    transition: all 1s;
+}
+
+.crown-enter {
+    opacity: 0;
+    transform: translate(-50%, -300%);
+}
+
+.crown-leave-active {
+    transition: all 1s;
+}
+
+.crown-leave-to {
+    opacity: 0;
+    transform: translate(-50%, 50%);
+}
+
+/* Skull animation configuration. */
+/* ============================== */
+
+.skull-enter-active {
+    transition: all 3s;
+}
+
+#game-over-skull.skull-enter {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(3);
 }

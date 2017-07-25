@@ -9,6 +9,7 @@ let app = new Vue({
         hippoName: null,
         score: null,
         isPlaying: true,
+        hasCrown: false,
         noseGoes: {
             isActive: false,
             showMarble: true,
@@ -35,13 +36,13 @@ let app = new Vue({
                 '#tap-text',
                 0.1,
                 { scale: 1 },
-                { scale: 1.2, yoyo: true, repeat: 1 },
+                { scale: 1.5, yoyo: true, repeat: 1 },
             );
             TweenMax.fromTo(
                 '#tap-text',
                 0.1,
                 { rotation: 0 },
-                { rotation: Math.random() * 6 - 3, yoyo: true, repeat: 1 },
+                { rotation: Math.random() * 10 - 5, yoyo: true, repeat: 1 },
             );
         },
 
@@ -81,6 +82,8 @@ socket.onmessage = function(event) {
         app.noseGoes.showMarble = true;
         app.noseGoes.marbleX = Math.random() * 0.5 + 0.25;
         app.noseGoes.marbleY = Math.random() * 0.5 + 0.25;
+
+        window.navigator.vibrate([300, 30, 500, 30, 300]);
     } else if (payload === 'EndNoseGoes') {
         // TODO: Do some kind of animation when the player is the one who lost?
         app.noseGoes.isActive = false;
@@ -98,6 +101,9 @@ socket.onmessage = function(event) {
 
             localStorage.removeItem('id');
         }
+    } else if (payload['UpdateWinner']) {
+        let event = payload['UpdateWinner'];
+        app.hasCrown = (event.id == app.id);
     } else {
         console.error('Unrecognized player event:', payload);
     }
@@ -118,6 +124,7 @@ function registerPlayer() {
         app.id = response.id;
         app.hippoName = response.name;
         app.score = response.score;
+        app.hasCrown = response.has_crown;
 
         localStorage.setItem('id', response.id);
     });
@@ -131,6 +138,7 @@ if (cachedId != null) {
             app.id = response.id;
             app.hippoName = response.name;
             app.score = response.score;
+            app.hasCrown = response.has_crown;
         },
 
         (error, status) => {
@@ -140,3 +148,22 @@ if (cachedId != null) {
 } else {
     registerPlayer();
 }
+
+// Start the poison marble fidget animation.
+let poisonMarbleElement = document.getElementById('poison-marble');
+TweenMax.to(poisonMarbleElement, 0.13, { scale: 1.3, repeat: -1, yoyo: true });
+TweenMax.fromTo(
+    poisonMarbleElement,
+    0.1,
+    { rotation: -4 },
+    { rotation: 4, repeat: -1, yoyo: true },
+);
+
+// Start the poison marble flash animation.
+let poisonMarbleFlashElement = document.getElementById('poison-marble-flash');
+TweenMax.fromTo(
+    poisonMarbleFlashElement,
+    3,
+    { scale: 1, opacity: 1 },
+    { scale: 3, opacity: 0, repeat: -1 },
+);

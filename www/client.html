@@ -45,28 +45,48 @@
             <h1>HungryHipp.us</h1>
 
             <div id="game-screen" class="screen" v-if="isPlaying">
-                <h2 class="hippo-name">{{ hippoName }}</h2>
-                <div id="tap-text">Tap anywhere to feed your hippo!</div>
-                <div id="score-text">Score: {{ score }}</div>
+                <div id="name" class="hippo-name">{{ hippoName }}</div>
+                <div id="tap-text">Tap anywhere!</div>
+                <transition name="score">
+                    <div id="score-text" :key="score">{{ score }}</div>
+                </transition>
             </div>
 
             <div id="lose-screen" class="screen" v-if="!isPlaying">
-                <h2 id="game-over-text">Game Over</h2>
+                <h2>Game Over</h2>
+                <transition appear name="skull">
+                    <img id="game-over-skull" src="assets/skull.png">
+                </transition>
                 <div id="game-over-message">Your hippo <span class="hippo-name">{{ hippoName }}</span> ate a poison marble and died.</div>
                 <div id="final-score-text">Your final score is {{ score }}.</div>
                 <button v-on:click.stop="reload">Play Again</button>
             </div>
 
-            <div id="nose-goes-overlay" v-if="noseGoes.isActive">
+            <div id="nose-goes-overlay" v-show="noseGoes.isActive">
                 <div
                     id="poison-marble"
-                    v-if="noseGoes.showMarble"
+                    v-show="noseGoes.showMarble"
                     v-bind:style="{ top: (noseGoes.marbleY * 100) + '%', left: (noseGoes.marbleX * 100) + '%' }"
                     v-on:click="poisonMarble"
                 >
                     <span id="poison-marble-text">Tap Me!</span>
                 </div>
+                <div
+                    id="poison-marble-flash"
+                    v-show="noseGoes.showMarble"
+                    v-bind:style="{ top: (noseGoes.marbleY * 100) + '%', left: (noseGoes.marbleX * 100) + '%' }"
+                >
+                </div>
             </div>
+
+            <transition name="hippo" appear>
+                <div id="hippo-root" v-if="isPlaying">
+                    <img class="head" src="assets/hippo.png">
+                    <transition name="crown">
+                        <img class="crown" src="assets/crown.png" v-if="hasCrown">
+                    </transition>
+                </div>
+            </transition>
         </div>
 
         <!-- Load script for the client. -->
