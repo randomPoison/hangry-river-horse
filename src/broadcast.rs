@@ -46,28 +46,46 @@ pub enum HostBroadcast {
         players: HashSet<PlayerId>,
     },
 
+    /// The first player to tap during a nose-goes event has been selected to earn bonus points.
+    BonusWinner {
+        id: PlayerId,
+    },
+
     /// A nose-goes event has ended, and one or more players have been knocked out.
     EndNoseGoes {
         /// The players that have been knocked out. Will always have at least one member.
         losers: HashSet<PlayerId>,
+
+        /// The player that won the bonus points in the nose-goes round, if any.
+        ///
+        /// The first element of the tuple is the ID of the bonus winner, and the second element
+        /// is the player's new score.
+        bonus_winner: Option<(PlayerId, usize)>
     },
 
     /// A new player has taken the lead.
     UpdateWinner {
         id: PlayerId,
-    }
+    },
 }
 
 /// A message to be broadcast to connected player clients.
 #[derive(Debug, Serialize)]
 pub enum PlayerBroadcast {
     /// A nose-goes event has begun, and the player should be prompted to participate.
-    BeginNoseGoes,
+    BeginNoseGoes {},
+
+    /// The first player to tap during a nose-goes event has been selected to earn bonus points.
+    BonusWinner {
+        id: PlayerId,
+    },
 
     /// A nose-goes event has finished, and one or more playeres have been knocked out.
     ///
     /// One `PlayerLose` event will also be sent for each knocked-out player.
-    EndNoseGoes,
+    EndNoseGoes {
+        bonus_winner: Option<(PlayerId, usize)>
+    },
 
     /// A player has lost the game and has been removed.
     PlayerLose {
@@ -81,7 +99,7 @@ pub enum PlayerBroadcast {
     /// A new player has taken the lead.
     UpdateWinner {
         id: PlayerId,
-    }
+    },
 }
 
 /// Broadcasts messages to websocket subscribers.

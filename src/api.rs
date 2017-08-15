@@ -138,6 +138,9 @@ pub enum NoseGoesResponse {
 pub fn nose_goes(
     id: PlayerId,
     nose_goes: State<NoseGoesState>,
+    winner: State<Winner>,
+    host_broadcaster: State<HostBroadcaster>,
+    player_broadcaster: State<PlayerBroadcaster>,
 ) -> Result<NoseGoesResponse> {
     let mut nose_goes = nose_goes.lock().expect("Nose-goes state was poisoned!");
     match *nose_goes {
@@ -145,7 +148,9 @@ pub fn nose_goes(
             Err(Error::InvalidNoesGoes)
         }
 
-        NoseGoes::InProgress { ref mut remaining_players, .. } => {
+        NoseGoes::InProgress { ref mut remaining_players, ref mut bonus_winner, .. } => {
+            let winner = winner.lock().expect("Winner was poisoned!");
+
             // It's an error for the player to not be part of the nose-goes event.
             if !remaining_players.contains(&id) {
                 return Err(Error::InvalidNoesGoes);
@@ -155,6 +160,16 @@ pub fn nose_goes(
             // is the last one left, they die.
             if remaining_players.len() > 1 {
                 remaining_players.remove(&id);
+
+                // If the player is not winning and first one to tap, they get the bonus points.
+                if bonus_winner.is_none() && *winner != Some(id) {
+                    *bonus_winner = Some(id);
+
+                    // Notify the player and host that a bonus winner has been selected.
+                    host_broadcaster.send(HostBroadcast::BonusWinner { id });
+                    player_broadcaster.send(PlayerBroadcast::BonusWinner { id });
+                }
+
                 Ok(NoseGoesResponse::Survived)
             } else {
                 Ok(NoseGoesResponse::Died)
