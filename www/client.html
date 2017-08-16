@@ -47,9 +47,7 @@
             <div id="game-screen" class="screen" v-if="isPlaying">
                 <div id="name" class="hippo-name text-shadow">{{ hippoName }}</div>
                 <div id="tap-text" class="text-shadow">Tap anywhere!</div>
-                <transition name="score">
-                    <div id="score-text" class="text-shadow" :key="score">{{ score }}</div>
-                </transition>
+                <div id="score-text" class="text-shadow">{{ score }}</div>
             </div>
 
             <div id="lose-screen" class="screen" v-if="!isPlaying">

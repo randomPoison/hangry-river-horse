@@ -200,22 +200,6 @@ button {
     width: 70%;
 }
 
-/* Score animation configuration. */
-/* ============================== */
-
-.score-enter-active {
-    transition: all 0.2s;
-}
-
-.score-enter {
-    opacity: 0;
-    transform: scale(3);
-}
-
-.score-leave-active {
-    display: none;
-}
-
 /* Hippo head animation configuration. */
 /* =================================== */
 
