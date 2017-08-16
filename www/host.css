@@ -1,3 +1,11 @@
+/*
+Color constants:
+
+Highlight text color: #eab24a
+Supporting text color: white
+Text shadow color: #09381f
+*/
+
 @import url('https://fonts.googleapis.com/css?family=Baloo');
 
 body {
@@ -17,6 +25,12 @@ body {
 #vue-root {
     width: 100vw;
     height: 100vh;
+}
+
+/* General utility styles. */
+/* ======================= */
+.text-shadow {
+    text-shadow: 0.02em 0.1em #09381f;
 }
 
 /* Styles for the side containers. */
@@ -257,13 +271,11 @@ body {
 #nose-goes {
     font-size: 600%;
     color: #eab24a;
-    text-shadow: 5px 5px #09381f;
 }
 
 #death-message {
     font-size: 250%;
     color: white;
-    text-shadow: 5px 5px #09381f;
 }
 
 #death-message .name {

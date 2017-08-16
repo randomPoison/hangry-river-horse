@@ -42,24 +42,24 @@
 
     <body>
         <div id="app-root" v-on:click="feedMe">
-            <h1>HungryHipp.us</h1>
+            <h1 class="text-shadow">HungryHipp.us</h1>
 
             <div id="game-screen" class="screen" v-if="isPlaying">
-                <div id="name" class="hippo-name">{{ hippoName }}</div>
-                <div id="tap-text">Tap anywhere!</div>
+                <div id="name" class="hippo-name text-shadow">{{ hippoName }}</div>
+                <div id="tap-text" class="text-shadow">Tap anywhere!</div>
                 <transition name="score">
-                    <div id="score-text" :key="score">{{ score }}</div>
+                    <div id="score-text" class="text-shadow" :key="score">{{ score }}</div>
                 </transition>
             </div>
 
             <div id="lose-screen" class="screen" v-if="!isPlaying">
-                <h2>Game Over</h2>
+                <h2 class="text-shadow">Game Over</h2>
                 <transition appear name="skull">
                     <img id="game-over-skull" src="assets/skull.png">
                 </transition>
-                <div id="game-over-message">Your hippo <span class="hippo-name">{{ hippoName }}</span> ate a poison marble and died.</div>
-                <div id="final-score-text">Your final score is {{ score }}.</div>
-                <button v-on:click.stop="reload">Play Again</button>
+                <div id="game-over-message" class="text-shadow">Your hippo <span class="hippo-name">{{ hippoName }}</span> ate a poison marble and died.</div>
+                <div id="final-score-text" class="text-shadow">Your final score is <span class="hippo-name">{{ score }}</span>.</div>
+                <button v-on:click.stop="reload" class="text-shadow">Play Again</button>
             </div>
 
             <div id="nose-goes-overlay" v-show="noseGoes.isActive">

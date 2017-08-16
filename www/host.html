@@ -99,12 +99,12 @@
             </div>
 
 
-            <div id="nose-goes" class="center-item" v-show="noseGoes.isActive">
+            <div id="nose-goes" class="center-item text-shadow" v-show="noseGoes.isActive">
                 Look at your phone!
             </div>
 
             <transition name="death-message">
-                <div id="death-message" class="center-item" v-if="deathMessage.isActive && !noseGoes.isActive">
+                <div id="death-message" class="center-item text-shadow" v-if="deathMessage.isActive && !noseGoes.isActive">
                     <span class="name">{{ deathMessage.hippoName }}</span> ate a poison marble and died!
                 </div>
             </transition>
