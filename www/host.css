@@ -236,10 +236,17 @@ body {
     white-space: nowrap;
 }
 
+#island {
+    max-width: 60vw;
+    z-index: -1;
+}
+
+#island img {
+    width: 100%;
+}
+
 #attract-message {
-    font-size: 250%;
-    color: white;
-    text-shadow: 5px 5px #09381f;
+    width: 100%;
 }
 
 #site-address {

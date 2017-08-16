@@ -91,9 +91,13 @@
                 ></hippo-head>
             </transition-group>
 
-            <div id="attract-message" class="center-item" v-show="!noseGoes.isActive && !deathMessage.isActive">
-                Go to <span id="site-address">HungryHipp.us</span> to play!
+            <div id="island" class="center-item">
+                <img src="/assets/island.png">
+                <div class="center-item" v-show="!noseGoes.isActive && !deathMessage.isActive">
+                    <img src="/assets/logo.png" id="attract-message">
+                </div>
             </div>
+
 
             <div id="nose-goes" class="center-item" v-show="noseGoes.isActive">
                 Look at your phone!
